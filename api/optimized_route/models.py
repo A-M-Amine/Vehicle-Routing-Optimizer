@@ -5,7 +5,7 @@ from api.optimizer.models import Optimizer
 
 class OptimizedRoute(models.Model):
     name = models.CharField(max_length=150, blank=True, null=True)
-    # route = models.ForeignKey(Optimizer, on_delete=models.CASCADE)
+    optimizer = models.ForeignKey(Optimizer, on_delete=models.CASCADE, blank=True, null=True)
 
 
 class Vehicle(models.Model):

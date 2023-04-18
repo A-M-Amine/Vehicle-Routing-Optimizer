@@ -57,12 +57,15 @@ class OptimizerViewSet(viewsets.ModelViewSet):
         num_vehicles = optimizer_serializer.data['num_vehicles']
 
         result = solver(matrix=matrix, depot=depot, num_vehicles=num_vehicles)
+
         # TODO:  add name here
-        # optimized_route_serializer = OptimizedRouteSerializer(data=result)
-        # if optimized_route_serializer.is_valid():
-        #     optimized_route_serializer.create(validated_data=result)
-        # else:
-        #     return Response({"error": "check data"})
+        # get the optimized route linked to the optimizer and update it with the data
+        opt_route_instance = OptimizedRoute.objects.get(optimizer=optimizer_instance)
+        optimized_route_serializer = OptimizedRouteSerializer(data=result)
+        if optimized_route_serializer.is_valid():
+            optimized_route_serializer.update(instance=opt_route_instance, validated_data=result)
+        else:
+            return Response({"error": "check data"})
 
         return Response(result)
 
