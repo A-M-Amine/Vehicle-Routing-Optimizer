@@ -2,10 +2,13 @@ from rest_framework import serializers
 from .models import Optimizer
 from api.optimized_route.serializers import OptimizedRouteSerializer
 from api.optimized_route.models import OptimizedRoute
+from .validators import validate_locations_value, validate_depot_value
 
 
 class OptimizerSerializer(serializers.ModelSerializer):
     optimizedroute = OptimizedRouteSerializer(read_only=True)
+    locations = serializers.CharField(required=True)
+    num_vehicles = serializers.IntegerField(required=True, min_value=1)
 
     class Meta:
         model = Optimizer
@@ -29,3 +32,18 @@ class OptimizerSerializer(serializers.ModelSerializer):
         OptimizedRoute.objects.update_or_create(optimizer=instance)
         return instance
 
+    def validate_locations(self, value):
+
+        check, message = validate_locations_value(value)
+        if not check:
+            raise serializers.ValidationError(message)
+
+        return value
+
+    def validate_depot(self, value):
+
+        check, message = validate_depot_value(self.initial_data.get('locations'), value)
+        if not check:
+            raise serializers.ValidationError(message)
+
+        return value

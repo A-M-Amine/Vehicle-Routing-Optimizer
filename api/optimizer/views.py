@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from .models import Optimizer
 from .serializers import OptimizerSerializer
 from .solver import solver, route_matrix_via_api
-from .validators import validate_query_params
+from .validators import validate_locations_value
 from api.optimized_route.models import OptimizedRoute, Vehicle
 from api.optimized_route.serializers import OptimizedRouteSerializer
 import json
@@ -18,29 +18,12 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
 
-        data = request.data
-        locations_data = data.get('locations', None)
-        depot_data = data.get('depot', None)
-        num_vehicles_data = data.get('num_vehicles', None)
+        serializer = self.get_serializer(data=request.data)
 
-        # TODO: add validators for dept and vehicles count
-        if locations_data is None:
-            return Response({'error': 'Invalid locations array'}, status=400)
+        serializer.is_valid(raise_exception=True)
 
-        check, message = validate_query_params(locations_data)
-        if not check:
-            return Response({'error': message}, status=400)
+        serializer.save()
 
-        # return Response({'error': 'Invalid locations array'}, status=400)
-
-        new_optimizer = Optimizer.objects.create(locations=locations_data,
-                                                 depot=depot_data,
-                                                 num_vehicles=num_vehicles_data)
-
-        new_optimizer.save()
-        serializer = OptimizerSerializer(new_optimizer)
-
-        # Return the created optimizer
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
@@ -73,6 +56,7 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get', 'post'], url_path="create-matrix", url_name="create-matrix")
     def create_matrix(self, request):
+
         pk = request.query_params.get('key')
         try:
             optimizer_instance = Optimizer.objects.get(id=pk)

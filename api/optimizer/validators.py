@@ -3,13 +3,11 @@ from rest_framework.response import Response
 import json
 
 
-def validate_query_params(params):
+def validate_locations_value(params):
     # Try to parse the string as a JSON array
     try:
         lst = json.loads(params)
         # Check if the result is a list
-        print(lst)
-        print(type(lst))
         if isinstance(lst, list):
             # Check if the list has at least two items
 
@@ -26,3 +24,15 @@ def validate_query_params(params):
     except json.JSONDecodeError:
         # The string is not a valid JSON array
         return False, "Data must be a valid JSON array."
+
+
+def validate_depot_value(locations, depot):
+    try:
+        locations = json.loads(locations)
+        if depot < 0 or depot > len(locations) - 1:
+            return False, "Depot Index out of bounds"
+
+        return True, ""
+    except json.JSONDecodeError:
+        # The string is not a valid JSON array
+        return False, "Locations Data must be a valid JSON array."
