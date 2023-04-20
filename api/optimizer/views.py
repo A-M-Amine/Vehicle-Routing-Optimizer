@@ -45,6 +45,7 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def solver(self, request):
+        self.get_object()
         pk = request.query_params.get('key')
         try:
             optimizer_instance = Optimizer.objects.get(id=pk)
@@ -55,8 +56,9 @@ class OptimizerViewSet(viewsets.ModelViewSet):
         matrix = optimizer_serializer.data['matrix']
         depot = optimizer_serializer.data['depot']
         num_vehicles = optimizer_serializer.data['num_vehicles']
+        locations = json.loads(optimizer_serializer.data['locations'])
 
-        result = solver(matrix=matrix, depot=depot, num_vehicles=num_vehicles)
+        result = solver(locations=locations, matrix=matrix, depot=depot, num_vehicles=num_vehicles)
 
         # TODO:  add name here
         # get the optimized route linked to the optimizer and update it with the data
@@ -86,9 +88,3 @@ class OptimizerViewSet(viewsets.ModelViewSet):
         optimizer = OptimizerSerializer(optimizer_instance)
 
         return Response(optimizer.data)
-
-
-
-
-
-

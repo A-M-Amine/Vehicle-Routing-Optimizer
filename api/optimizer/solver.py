@@ -3,7 +3,8 @@ from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import random
 from creds import ORS_KEY
-import json
+from api.optimizer.models import Optimizer
+import requests
 
 
 def route_matrix_via_api(locations):
@@ -27,7 +28,7 @@ def route_matrix_via_api(locations):
     return matrix_dict
 
 
-def solver(matrix=0, num_vehicles=2, depot=0):
+def solver(locations, matrix=0, num_vehicles=2, depot=0):
     # Get the distance and times matrices using the driving-car profile
     distance_matrix = matrix['distances']
 
@@ -133,12 +134,12 @@ def solver(matrix=0, num_vehicles=2, depot=0):
 
     # return the result if found
     if solution:
-        return get_solution(data, manager, routing, solution)
+        return get_solution(data, manager, routing, solution, locations)
     else:
         return {'ERROR': 'Solution not found'}
 
 
-def get_solution(data, manager, routing, solution):
+def get_solution(data, manager, routing, solution, locations):
     result = {}
     time_dimension = routing.GetDimensionOrDie('Time')
     total_time = 0
@@ -149,13 +150,16 @@ def get_solution(data, manager, routing, solution):
         while not routing.IsEnd(index):
             time_var = time_dimension.CumulVar(index)
             node_index = manager.IndexToNode(index)
-            route.append(node_index)
+            route.append(locations[node_index])
             index = solution.Value(routing.NextVar(index))
 
         time_var = time_dimension.CumulVar(index)
         node_index = manager.IndexToNode(index)
-        route.append(node_index)
+        route.append(locations[node_index])
         route_time = solution.Min(time_var)
+
+        route = create_geojson(route)
+
         routes.append({'vehicle_id': vehicle_id,
                        'path': route,
                        'route_time': route_time})
@@ -164,5 +168,33 @@ def get_solution(data, manager, routing, solution):
     result['vehicle_routes'] = routes
     # result['total_time'] = total_time
     return result
+
+
+def create_geojson(locations):
+    # Define the API endpoint and the profile
+    endpoint = "https://api.openrouteservice.org/v2/directions/"
+    profile = "driving-car/geojson"
+
+    # Define the request headers with your API key
+    headers = {
+        "Authorization": ORS_KEY,
+        "Content-Type": "application/json"
+    }
+
+    # Define the request body with the locations
+    body = {
+        "coordinates": locations
+    }
+
+    # Send a POST request to the API endpoint with the profile, headers and body
+    response = requests.post(endpoint + profile, headers=headers, json=body)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Return the geojson file of the route
+        return response.json()
+    else:
+        # Return an error message
+        return response.json()["error"]
 
 

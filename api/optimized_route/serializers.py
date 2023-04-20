@@ -3,10 +3,15 @@ from .models import OptimizedRoute, Vehicle
 
 
 class VehicleSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Vehicle
         fields = '__all__'
+
+    # def to_representation(self, instance):
+    #     representation = super().to_representation(instance)
+    #     representation['path'] = "GeoJson Path"
+    #
+    #     return representation
 
 
 class OptimizedRouteSerializer(serializers.ModelSerializer):
