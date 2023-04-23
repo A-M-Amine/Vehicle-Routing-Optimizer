@@ -64,6 +64,7 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
         return Response({"Success": "Solution Found"})
 
+    # test
     # @action(detail=False, methods=['get', 'post'], url_path="create-matrix", url_name="create-matrix")
     # def create_matrix(self, request):
     #
