@@ -134,9 +134,9 @@ def solver(locations, matrix=0, num_vehicles=2, depot=0):
 
     # return the result if found
     if solution:
-        return get_solution(data, manager, routing, solution, locations)
+        return True, get_solution(data, manager, routing, solution, locations)
     else:
-        return {'ERROR': 'Solution not found'}
+        return False, {'Error': 'Solution not found'}
 
 
 def get_solution(data, manager, routing, solution, locations):
@@ -196,5 +196,3 @@ def create_geojson(locations):
     else:
         # Return an error message
         return response.json()["error"]
-
-

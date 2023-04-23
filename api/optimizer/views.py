@@ -28,7 +28,6 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def solver(self, request):
-        self.get_object()
         pk = request.query_params.get('key')
         try:
             optimizer_instance = Optimizer.objects.get(id=pk)
@@ -36,14 +35,25 @@ class OptimizerViewSet(viewsets.ModelViewSet):
             return Response({'Error': f'Optimizer with id {pk} does not exist'})
 
         optimizer_serializer = OptimizerSerializer(optimizer_instance)
-        matrix = optimizer_serializer.data['matrix']
         depot = optimizer_serializer.data['depot']
         num_vehicles = optimizer_serializer.data['num_vehicles']
         locations = json.loads(optimizer_serializer.data['locations'])
 
-        result = solver(locations=locations, matrix=matrix, depot=depot, num_vehicles=num_vehicles)
+        matrix = optimizer_serializer.data['matrix']
 
-        # TODO:  add name here
+        print(matrix == {})
+        if matrix == {}:
+            matrix = route_matrix_via_api(json.loads(optimizer_serializer.data['locations']))
+            optimizer_instance = optimizer_serializer.update(instance=optimizer_instance,
+                                                             validated_data=matrix)
+            optimizer_instance.save()
+            matrix = matrix['matrix']
+            print("MATRIX API CALL")
+
+        check, result = solver(locations=locations, matrix=matrix, depot=depot, num_vehicles=num_vehicles)
+        if not check:
+            return Response(result)
+
         # get the optimized route linked to the optimizer and update it with the data
         opt_route_instance = OptimizedRoute.objects.get(optimizer=optimizer_instance)
         optimized_route_serializer = OptimizedRouteSerializer(data=result)
@@ -52,23 +62,23 @@ class OptimizerViewSet(viewsets.ModelViewSet):
         else:
             return Response({"error": "check data"})
 
-        return Response(result)
+        return Response({"Success": "Solution Found"})
 
-    @action(detail=False, methods=['get', 'post'], url_path="create-matrix", url_name="create-matrix")
-    def create_matrix(self, request):
-
-        pk = request.query_params.get('key')
-        try:
-            optimizer_instance = Optimizer.objects.get(id=pk)
-        except Optimizer.DoesNotExist:
-            return Response({'Error': f'Optimizer with id {pk} does not exist'})
-
-        optimizer = OptimizerSerializer(optimizer_instance)
-        if optimizer.data['matrix'] != {}:
-            return Response({'error': 'Distance & Time matrix already exist'})
-
-        matrix = route_matrix_via_api(json.loads(optimizer.data['locations']))
-        optimizer_instance = optimizer.update(instance=optimizer_instance, validated_data=matrix)
-        optimizer = OptimizerSerializer(optimizer_instance)
-
-        return Response(optimizer.data)
+    # @action(detail=False, methods=['get', 'post'], url_path="create-matrix", url_name="create-matrix")
+    # def create_matrix(self, request):
+    #
+    #     pk = request.query_params.get('key')
+    #     try:
+    #         optimizer_instance = Optimizer.objects.get(id=pk)
+    #     except Optimizer.DoesNotExist:
+    #         return Response({'Error': f'Optimizer with id {pk} does not exist'})
+    #
+    #     optimizer = OptimizerSerializer(optimizer_instance)
+    #     if optimizer.data['matrix'] != {}:
+    #         return Response({'error': 'Distance & Time matrix already exist'})
+    #
+    #     matrix = route_matrix_via_api(json.loads(optimizer.data['locations']))
+    #     optimizer_instance = optimizer.update(instance=optimizer_instance, validated_data=matrix)
+    #     optimizer = OptimizerSerializer(optimizer_instance)
+    #
+    #     return Response(optimizer.data)
