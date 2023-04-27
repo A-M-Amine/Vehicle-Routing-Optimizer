@@ -7,11 +7,11 @@ class VehicleSerializer(serializers.ModelSerializer):
         model = Vehicle
         fields = '__all__'
 
-    # def to_representation(self, instance):
-    #     representation = super().to_representation(instance)
-    #     representation['path'] = "GeoJson Path"
-    #
-    #     return representation
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['path'] = "GeoJson Path"
+
+        return representation
 
 
 class OptimizedRouteSerializer(serializers.ModelSerializer):
@@ -35,8 +35,8 @@ class OptimizedRouteSerializer(serializers.ModelSerializer):
             setattr(instance, key, value)
         instance.save()
         for vehicle in vehicle_data:
-            Vehicle.objects.update_or_create(route=instance, vehicle_id=vehicle['vehicle_id'],
-                                             path=vehicle['path'], route_time=vehicle['route_time'])
+            Vehicle.objects.filter(vehicle_id=vehicle['vehicle_id']).update(path=vehicle['path'],
+                                                                            route_time=vehicle['route_time'])
         return instance
 
     def to_representation(self, instance):
