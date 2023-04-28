@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import openrouteservice as ors
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
@@ -188,7 +190,6 @@ def create_geojson(locations):
 
     # Send a POST request to the API endpoint with the profile, headers and body
     response = requests.post(endpoint + profile, headers=headers, json=body)
-
     # Check if the request was successful
     if response.status_code == 200:
         # Return the geojson file of the route

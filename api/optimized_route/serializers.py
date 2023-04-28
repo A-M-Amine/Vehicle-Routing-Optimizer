@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from .models import OptimizedRoute, Vehicle
 
@@ -35,8 +36,13 @@ class OptimizedRouteSerializer(serializers.ModelSerializer):
             setattr(instance, key, value)
         instance.save()
         for vehicle in vehicle_data:
-            Vehicle.objects.filter(vehicle_id=vehicle['vehicle_id']).update(path=vehicle['path'],
-                                                                            route_time=vehicle['route_time'])
+            obj_set = Vehicle.objects.filter(route=instance, vehicle_id=vehicle['vehicle_id'])
+
+            if obj_set.exists():
+                obj_set.update(path=vehicle['path'], route_time=vehicle['route_time'])
+            else:
+                obj_set.create(route=instance, vehicle_id=vehicle['vehicle_id'], path=vehicle['path'],
+                               route_time=vehicle['route_time'])
         return instance
 
     def to_representation(self, instance):
