@@ -41,14 +41,12 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
         matrix = optimizer_serializer.data['matrix']
 
-        print(matrix == {})
         if matrix == {}:
             matrix = route_matrix_via_api(json.loads(optimizer_serializer.data['locations']))
             optimizer_instance = optimizer_serializer.update(instance=optimizer_instance,
                                                              validated_data=matrix)
             optimizer_instance.save()
             matrix = matrix['matrix']
-            print("MATRIX API CALL")
 
         check, result = solver(locations=locations, matrix=matrix, depot=depot, num_vehicles=num_vehicles)
         if not check:

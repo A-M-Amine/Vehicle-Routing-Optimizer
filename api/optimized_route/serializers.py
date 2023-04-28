@@ -7,11 +7,11 @@ class VehicleSerializer(serializers.ModelSerializer):
         model = Vehicle
         fields = '__all__'
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['path'] = "GeoJson Path"
-
-        return representation
+    # def to_representation(self, instance):
+    #     representation = super().to_representation(instance)
+    #     representation['path'] = "GeoJson Path"
+    #
+    #     return representation
 
 
 class OptimizedRouteSerializer(serializers.ModelSerializer):
