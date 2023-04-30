@@ -42,7 +42,7 @@ class OptimizedRouteSerializer(serializers.ModelSerializer):
                 obj_set.update(path=vehicle['path'], route_time=vehicle['route_time'])
             else:
                 obj_set.create(route=instance, vehicle_id=vehicle['vehicle_id'], path=vehicle['path'],
-                               route_time=vehicle['route_time'])
+                               path_index=vehicle['path_index'], route_time=vehicle['route_time'])
         return instance
 
     def to_representation(self, instance):

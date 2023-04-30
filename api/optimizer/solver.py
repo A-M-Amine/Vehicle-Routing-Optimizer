@@ -149,21 +149,25 @@ def get_solution(data, manager, routing, solution, locations):
     for vehicle_id in range(data['num_vehicles']):
         index = routing.Start(vehicle_id)
         route = []
+        route_index = []
         while not routing.IsEnd(index):
             time_var = time_dimension.CumulVar(index)
             node_index = manager.IndexToNode(index)
             route.append(locations[node_index])
+            route_index.append(node_index)
             index = solution.Value(routing.NextVar(index))
 
         time_var = time_dimension.CumulVar(index)
         node_index = manager.IndexToNode(index)
         route.append(locations[node_index])
+        route_index.append(node_index)
         route_time = solution.Min(time_var)
 
         route = create_geojson(route)
 
         routes.append({'vehicle_id': vehicle_id,
                        'path': route,
+                       'path_index': route_index,
                        'route_time': route_time})
         total_time += route_time
 

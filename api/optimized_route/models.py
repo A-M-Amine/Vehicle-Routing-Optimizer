@@ -1,5 +1,7 @@
 from django.db import models
 from api.optimizer.models import Optimizer
+
+
 # Create your models here.
 
 
@@ -9,10 +11,8 @@ class OptimizedRoute(models.Model):
 
 
 class Vehicle(models.Model):
-
     route = models.ForeignKey(OptimizedRoute, on_delete=models.CASCADE, blank=True, null=True)
     vehicle_id = models.IntegerField(default=0)
     path = models.JSONField(default=dict)
+    path_index = models.JSONField(default=dict)
     route_time = models.IntegerField(default=0)
-
-
