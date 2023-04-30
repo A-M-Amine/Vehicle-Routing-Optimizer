@@ -39,7 +39,7 @@ class OptimizedRouteSerializer(serializers.ModelSerializer):
             obj_set = Vehicle.objects.filter(route=instance, vehicle_id=vehicle['vehicle_id'])
 
             if obj_set.exists():
-                obj_set.update(path=vehicle['path'], route_time=vehicle['route_time'])
+                obj_set.update(path=vehicle['path'], path_index=vehicle['path_index'], route_time=vehicle['route_time'])
             else:
                 obj_set.create(route=instance, vehicle_id=vehicle['vehicle_id'], path=vehicle['path'],
                                path_index=vehicle['path_index'], route_time=vehicle['route_time'])

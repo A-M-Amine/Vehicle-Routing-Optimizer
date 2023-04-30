@@ -154,15 +154,14 @@ def get_solution(data, manager, routing, solution, locations):
             time_var = time_dimension.CumulVar(index)
             node_index = manager.IndexToNode(index)
             route.append(locations[node_index])
-            route_index.append(node_index)
             index = solution.Value(routing.NextVar(index))
 
         time_var = time_dimension.CumulVar(index)
         node_index = manager.IndexToNode(index)
         route.append(locations[node_index])
-        route_index.append(node_index)
         route_time = solution.Min(time_var)
 
+        route_index = route[::]
         route = create_geojson(route)
 
         routes.append({'vehicle_id': vehicle_id,
