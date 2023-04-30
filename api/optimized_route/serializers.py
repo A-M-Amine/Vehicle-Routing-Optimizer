@@ -1,6 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from .models import OptimizedRoute, Vehicle
+import json
 
 
 class VehicleSerializer(serializers.ModelSerializer):
@@ -8,11 +9,13 @@ class VehicleSerializer(serializers.ModelSerializer):
         model = Vehicle
         fields = '__all__'
 
-    # def to_representation(self, instance):
-    #     representation = super().to_representation(instance)
-    #     representation['path'] = "GeoJson Path"
-    #
-    #     return representation
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        if representation['path_index'] == {}:
+            representation['path_index'] = []
+
+        return representation
 
 
 class OptimizedRouteSerializer(serializers.ModelSerializer):
@@ -46,10 +49,9 @@ class OptimizedRouteSerializer(serializers.ModelSerializer):
         return instance
 
     def to_representation(self, instance):
-
         data = super().to_representation(instance)
-        request = self.context['request']
         vehicles = Vehicle.objects.all().filter(route=instance)
         serialized_vehicles = VehicleSerializer(vehicles, many=True)
         data['vehicle_routes'] = serialized_vehicles.data
+
         return data
