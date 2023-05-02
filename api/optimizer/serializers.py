@@ -1,35 +1,39 @@
 from rest_framework import serializers
 from .models import Optimizer
-from api.optimized_route.serializers import OptimizedRouteSerializer
 from api.optimized_route.models import OptimizedRoute
+from api.vehicle.models import Vehicle
 from .validators import validate_locations_value, validate_depot_value
+from rest_framework.validators import UniqueValidator
 
 
 class OptimizerSerializer(serializers.ModelSerializer):
-    optimizedroute = OptimizedRouteSerializer(read_only=True)
+    name = serializers.CharField(required=True,
+                                 validators=[UniqueValidator(queryset=Optimizer.objects.all())])
     locations = serializers.CharField(required=True)
-    num_vehicles = serializers.IntegerField(required=True, min_value=1)
+    vehicles = serializers.PrimaryKeyRelatedField(many=True, queryset=Vehicle.objects.all())
 
     class Meta:
         model = Optimizer
-        fields = ['id', 'locations', 'depot', 'num_vehicles', 'matrix', 'optimizedroute']
+        fields = '__all__'
 
     def create(self, validated_data):
-        # no needed data to use for creating Optimized Route
-        # validated_data.pop('optimizedroute')
 
-        optimizer_instance = Optimizer.objects.create(**validated_data)
-        OptimizedRoute.objects.create(optimizer=optimizer_instance)
-
-        return optimizer_instance
+        vehicles = validated_data.pop('vehicles')
+        optimizer = Optimizer.objects.create(**validated_data)
+        OptimizedRoute.objects.create(optimizer=optimizer)
+        optimizer.vehicles.set(vehicles)
+        return optimizer
 
     def update(self, instance, validated_data):
-        # validated_data.pop('optimizedroute')
+        vehicles = validated_data.pop('vehicles', None)
 
         for key, value in validated_data.items():
             setattr(instance, key, value)
         instance.save()
-        OptimizedRoute.objects.update_or_create(optimizer=instance)
+
+        if vehicles is not None:
+            instance.vehicles.set(vehicles)
+
         return instance
 
     def validate_locations(self, value):
@@ -46,4 +50,10 @@ class OptimizerSerializer(serializers.ModelSerializer):
         if not check:
             raise serializers.ValidationError(message)
 
+        return value
+
+    def validate_vehicles(self, value):
+
+        if not value:
+            raise serializers.ValidationError("At least one vehicle is required.")
         return value

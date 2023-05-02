@@ -5,14 +5,7 @@ from api.optimizer.models import Optimizer
 # Create your models here.
 
 
+# TODO check for empty {} value of a vehicle path
 class OptimizedRoute(models.Model):
-    name = models.CharField(max_length=150, blank=True, null=True)
     optimizer = models.ForeignKey(Optimizer, on_delete=models.CASCADE, blank=True, null=True)
-
-
-class Vehicle(models.Model):
-    route = models.ForeignKey(OptimizedRoute, on_delete=models.CASCADE, blank=True, null=True)
-    vehicle_id = models.IntegerField(default=0)
-    path = models.JSONField(default=dict)
-    path_index = models.JSONField(default=dict)
-    route_time = models.IntegerField(default=0)
+    vehicle_routes = models.JSONField(default=dict)

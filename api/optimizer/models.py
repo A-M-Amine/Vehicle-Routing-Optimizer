@@ -1,14 +1,16 @@
 from django.db import models
+from api.vehicle.models import Vehicle
 
 
 # Create your models here.
 
 
 class Optimizer(models.Model):
+    name = models.CharField(max_length=150, unique=True, blank=True, null=True)
     locations = models.JSONField(default=dict)
     depot = models.IntegerField(default=0)
-    num_vehicles = models.IntegerField(default=1)
+    vehicles = models.ManyToManyField(Vehicle)
     matrix = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
-        return str(self.id)
+        return f"{self.name}, depot index : {self.depot}"

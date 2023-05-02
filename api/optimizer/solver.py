@@ -1,4 +1,4 @@
-from pprint import pprint
+import json
 
 import openrouteservice as ors
 from ortools.constraint_solver import routing_enums_pb2
@@ -30,7 +30,8 @@ def route_matrix_via_api(locations):
     return matrix_dict
 
 
-def solver(locations, matrix=0, num_vehicles=2, depot=0):
+# TODO add vehicle capacity
+def solver(locations, matrix, vehicles, depot=0):
     # Get the distance and times matrices using the driving-car profile
     distance_matrix = matrix['distances']
 
@@ -38,26 +39,15 @@ def solver(locations, matrix=0, num_vehicles=2, depot=0):
 
     cities = ["LOC" + str(i) if i != depot else "Depot" for i in range(len(matrix['distances'][0]))]
 
-    # Generate random time windows for each city
-    random.seed(42)
-    time_windows = []
-    for i in range(len(cities)):
-
-        if depot == i:
-            time_windows.append((0, 0))  # depot has no time window
-        else:
-            # earliest start time between 7 am and 12 pm
-            start = random.randint(7, 12) * 3600
-            # latest end time between 1 and 4 hours after start
-            end = start + random.randint(1, 4) * 3600
-            time_windows.append((start, end))
+    # TODO change to input Generate random time windows for each city
+    time_windows = random_time_windows(cities, depot)
 
     # Create the data model
     data = {}
     data['distance_matrix'] = distance_matrix
     data['time_matrix'] = time_matrix
     data['time_windows'] = time_windows
-    data['num_vehicles'] = num_vehicles
+    data['num_vehicles'] = len(vehicles)
     data['depot'] = depot
 
     # Create the routing index manager
@@ -136,12 +126,13 @@ def solver(locations, matrix=0, num_vehicles=2, depot=0):
 
     # return the result if found
     if solution:
-        return True, get_solution(data, manager, routing, solution, locations)
+        return True, get_solution(data, manager, routing, solution, locations, vehicles)
     else:
         return False, {'Error': 'Solution not found'}
 
 
-def get_solution(data, manager, routing, solution, locations):
+def get_solution(data, manager, routing, solution, locations, vehicles):
+    locations = locations
     result = {}
     time_dimension = routing.GetDimensionOrDie('Time')
     total_time = 0
@@ -164,14 +155,12 @@ def get_solution(data, manager, routing, solution, locations):
         route_index = route[::]
         route = create_geojson(route)
 
-        routes.append({'vehicle_id': vehicle_id,
-                       'path': route,
+        routes.append({'vehicle_id': vehicles[vehicle_id],
                        'path_index': route_index,
-                       'route_time': route_time})
+                       'route_time': route_time,
+                       'path': route})
         total_time += route_time
-
     result['vehicle_routes'] = routes
-    # result['total_time'] = total_time
     return result
 
 
@@ -200,3 +189,26 @@ def create_geojson(locations):
     else:
         # Return an error message
         return response.json()["error"]
+
+
+def random_time_windows(cities, depot):
+    random.seed(42)
+    time_windows = []
+    for i in range(len(cities)):
+
+        if depot == i:
+            time_windows.append((0, 0))  # depot has no time window
+        else:
+            # earliest start time between 7 am and 12 pm
+            start = random.randint(7, 12) * 3600
+            # latest end time between 1 and 4 hours after start
+            end = start + random.randint(1, 4) * 3600
+            time_windows.append((start, end))
+
+    return time_windows
+
+
+def tester(id, name, locations, depot, vehicles, matrix):
+    check, res = solver(locations, matrix, len(vehicles), depot)
+
+    return False, "nain"

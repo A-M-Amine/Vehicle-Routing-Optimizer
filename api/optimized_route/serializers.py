@@ -1,57 +1,25 @@
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
-from .models import OptimizedRoute, Vehicle
-import json
-
-
-class VehicleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Vehicle
-        fields = '__all__'
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-
-        if representation['path_index'] == {}:
-            representation['path_index'] = []
-
-        return representation
+from .models import OptimizedRoute
+from api.vehicle.serializers import VehicleSerializer
+from api.vehicle.models import Vehicle
+from api.optimizer.models import Optimizer
+from api.optimizer.serializers import OptimizerSerializer
 
 
 class OptimizedRouteSerializer(serializers.ModelSerializer):
-    vehicle_routes = VehicleSerializer(many=True, read_only=True)
-
     class Meta:
-
         model = OptimizedRoute
         fields = '__all__'
 
-    def create(self, validated_data):
-        vehicle_data = validated_data.pop('vehicle_routes')
-        optimized_route_instance = OptimizedRoute.objects.create(**validated_data)
-        for vehicle in vehicle_data:
-            Vehicle.objects.create(route=optimized_route_instance, **vehicle)
-        return optimized_route_instance
-
-    def update(self, instance, validated_data):
-        vehicle_data = validated_data.pop('vehicle_routes')
-        for key, value in validated_data.items():
-            setattr(instance, key, value)
-        instance.save()
-        for vehicle in vehicle_data:
-            obj_set = Vehicle.objects.filter(route=instance, vehicle_id=vehicle['vehicle_id'])
-
-            if obj_set.exists():
-                obj_set.update(path=vehicle['path'], path_index=vehicle['path_index'], route_time=vehicle['route_time'])
-            else:
-                obj_set.create(route=instance, vehicle_id=vehicle['vehicle_id'], path=vehicle['path'],
-                               path_index=vehicle['path_index'], route_time=vehicle['route_time'])
-        return instance
-
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        vehicles = Vehicle.objects.all().filter(route=instance)
-        serialized_vehicles = VehicleSerializer(vehicles, many=True)
-        data['vehicle_routes'] = serialized_vehicles.data
+        self_optimizer = Optimizer.objects.get(id=data['optimizer'])
+        self_opt_serializer = OptimizerSerializer(self_optimizer)
+        vehicles = Vehicle.objects.filter(id__in=self_opt_serializer.data['vehicles'])
+        serializer = VehicleSerializer(vehicles, many=True)
+        data_vehicles = serializer.data
+        for index, vehicle in enumerate(data_vehicles):
+            data['vehicle_routes'][index]['capacity'] = vehicle['capacity']
 
         return data
