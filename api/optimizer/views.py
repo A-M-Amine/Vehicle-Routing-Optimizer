@@ -16,19 +16,31 @@ class OptimizerViewSet(viewsets.ModelViewSet):
     queryset = Optimizer.objects.all()
     serializer_class = OptimizerSerializer
 
+    def perform_update(self, serializer):
+        # Check if the serializer data has changed
+        if serializer.has_changed():
+            # Set the solved field to False
+            serializer.instance.solved = False
+        # Save the serializer data
+        serializer.save()
+
     @action(detail=True, methods=['get'])
     def solver(self, request, pk=None):
 
         optimizer_instance = self.get_object()
 
         optimizer_serializer = OptimizerSerializer(optimizer_instance)
+
+        solved = optimizer_serializer.data['solved']
+        if solved:
+            return Response({"Success": "solution already exists"})
+
         depot = optimizer_serializer.data['depot']
         vehicles = optimizer_serializer.data['vehicles']
-        locations = json.loads(optimizer_serializer.data['locations'])
-
+        locations = optimizer_serializer.data['locations']
         matrix = optimizer_serializer.data['matrix']
 
-        if matrix == {}:
+        if matrix['locations'] != locations:
             matrix = route_matrix_via_api(locations)
             optimizer_instance = optimizer_serializer.update(instance=optimizer_instance,
                                                              validated_data=matrix)
@@ -41,6 +53,9 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
         # get the optimized route linked to the optimizer and update it with the data
         try:
+            solved = {'solved': True}
+            optimizer_serializer.update(instance=optimizer_instance, validated_data=solved)
+            optimizer_instance.save()
             opt_route_instance = OptimizedRoute.objects.get(optimizer=optimizer_instance)
             optimized_route_serializer = OptimizedRouteSerializer(data=result)
             if optimized_route_serializer.is_valid():

@@ -9,8 +9,9 @@ from rest_framework.validators import UniqueValidator
 class OptimizerSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True,
                                  validators=[UniqueValidator(queryset=Optimizer.objects.all())])
-    locations = serializers.CharField(required=True)
+    locations = serializers.JSONField(required=True)
     vehicles = serializers.PrimaryKeyRelatedField(many=True, queryset=Vehicle.objects.all())
+    solved = serializers.BooleanField(default=False)
 
     class Meta:
         model = Optimizer
@@ -36,6 +37,18 @@ class OptimizerSerializer(serializers.ModelSerializer):
 
         return instance
 
+    def has_changed(self):
+        # Get the instance data
+        instance_data = self.to_representation(self.instance)
+        # Get the validated data
+        validated_data = self.validated_data
+        # Compare the two data and return True if they are different
+        for key in instance_data.keys() & validated_data.keys():
+            if instance_data[key] != validated_data[key]:
+                return True
+
+        return False
+
     def validate_locations(self, value):
 
         check, message = validate_locations_value(value)
@@ -57,3 +70,9 @@ class OptimizerSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError("At least one vehicle is required.")
         return value
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop('matrix')
+
+        return data

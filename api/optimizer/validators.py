@@ -6,7 +6,7 @@ import json
 def validate_locations_value(params):
     # Try to parse the string as a JSON array
     try:
-        lst = json.loads(params)
+        lst = params
         # Check if the result is a list
         if isinstance(lst, list):
             # Check if the list has at least two items
@@ -27,12 +27,9 @@ def validate_locations_value(params):
 
 
 def validate_depot_value(locations, depot):
-    try:
-        locations = json.loads(locations)
-        if depot < 0 or depot > len(locations) - 1:
-            return False, "Depot Index out of bounds"
+    locations = locations
+    if depot < 0 or depot > len(locations) - 1:
+        return False, "Depot Index out of bounds"
 
-        return True, ""
-    except json.JSONDecodeError:
-        # The string is not a valid JSON array
-        return False, "Locations Data must be a valid JSON array."
+    return True, ""
+

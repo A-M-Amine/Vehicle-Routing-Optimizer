@@ -4,9 +4,9 @@ from api.vehicle.models import Vehicle
 
 # Create your models here.
 
-
 class Optimizer(models.Model):
     name = models.CharField(max_length=150, unique=True, blank=True, null=True)
+    solved = models.BooleanField(default=False)
     locations = models.JSONField(default=dict)
     depot = models.IntegerField(default=0)
     vehicles = models.ManyToManyField(Vehicle)

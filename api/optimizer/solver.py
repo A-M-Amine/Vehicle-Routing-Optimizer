@@ -20,17 +20,25 @@ def route_matrix_via_api(locations):
     metrics = ['distance', 'duration']
 
     # Get the distance matrix
-    matrix = client.distance_matrix(
+    output = client.distance_matrix(
         locations=locations,
         profile=profile,
         metrics=metrics
     )
 
+    matrix = {
+        "locations": locations,
+        "distances": [],
+        "durations": []
+    }
+
+    matrix = matrix | output
+
     matrix_dict = {'matrix': matrix}
     return matrix_dict
 
 
-# TODO add vehicle capacity
+# TODO add vehicle capacity, handle matrix errors
 def solver(locations, matrix, vehicles, depot=0):
     # Get the distance and times matrices using the driving-car profile
     distance_matrix = matrix['distances']
