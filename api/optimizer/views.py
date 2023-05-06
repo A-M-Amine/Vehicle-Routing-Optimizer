@@ -1,14 +1,36 @@
-from rest_framework import viewsets
-from rest_framework import status
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Optimizer
-from .serializers import OptimizerSerializer
+from .models import Optimizer, Delivery
+from .serializers import OptimizerSerializer, DeliverySerializer
 from .solver import solver, route_matrix_via_api, tester
-from .validators import validate_locations_value
 from api.optimized_route.models import OptimizedRoute
 from api.optimized_route.serializers import OptimizedRouteSerializer
-import json
+
+
+# TODO fix HTTP ERROR Responses Type
+
+class DeliveryViewSet(viewsets.ModelViewSet):
+    queryset = Delivery.objects.all()
+    serializer_class = DeliverySerializer
+
+    def create(self, request, *args, **kwargs):
+        # Deserialize the incoming data into a list of dictionaries
+        data = request.data
+        if not isinstance(data, list):
+            return Response({'error': 'Expected a list of items'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Iterate through the list of dictionaries and create a Delivery object for each dictionary
+        created_deliveries = []
+        for delivery_data in data:
+            serializer = self.get_serializer(data=delivery_data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            created_deliveries.append(serializer.instance)
+
+        # Serialize the created objects and return them in the response
+        response_serializer = self.get_serializer(created_deliveries, many=True)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class OptimizerViewSet(viewsets.ModelViewSet):
@@ -35,19 +57,7 @@ class OptimizerViewSet(viewsets.ModelViewSet):
         if solved:
             return Response({"Success": "solution already exists"})
 
-        depot = optimizer_serializer.data['depot']
-        vehicles = optimizer_serializer.data['vehicles']
-        locations = optimizer_serializer.data['locations']
-        matrix = optimizer_serializer.data['matrix']
-
-        if matrix['locations'] != locations:
-            matrix = route_matrix_via_api(locations)
-            optimizer_instance = optimizer_serializer.update(instance=optimizer_instance,
-                                                             validated_data=matrix)
-            optimizer_instance.save()
-            matrix = matrix['matrix']
-
-        check, result = solver(locations, matrix, vehicles, depot)
+        check, result = solver(optimizer_instance)
         if not check:
             return Response(result)
 

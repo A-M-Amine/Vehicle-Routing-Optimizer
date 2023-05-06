@@ -1,5 +1,5 @@
 import json
-
+from api.optimizer.serializers import OptimizerSerializer
 import openrouteservice as ors
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
@@ -9,6 +9,7 @@ from api.optimizer.models import Optimizer
 import requests
 
 
+# TODO check the time format and use minutes for durations
 def route_matrix_via_api(locations):
     api_key = ORS_KEY
 
@@ -38,25 +39,58 @@ def route_matrix_via_api(locations):
     return matrix_dict
 
 
+def prepared_data(instance):
+    serializer = OptimizerSerializer(instance=instance)
+
+    locations = []
+    demand = []
+    time_windows = []
+    for delivery in instance.deliveries.all():
+        locations.append(delivery.coordinates)
+        demand.append(delivery.package_size)
+        time_windows.append(delivery.time_window)
+
+    matrix = serializer.data['matrix']
+    if matrix == {} or matrix['locations'] != locations:
+        matrix = route_matrix_via_api(locations)
+        optimizer_instance = serializer.update(instance=instance, validated_data=matrix)
+        optimizer_instance.save()
+        matrix = matrix['matrix']
+
+    result = {
+        "depot": serializer.data['depot'],
+        "vehicles": serializer.data['vehicles'],
+        "locations": locations,
+        "demand": demand,
+        "time_windows": time_windows,
+        "matrix": matrix
+    }
+
+    return result
+
+
 # TODO add vehicle capacity, handle matrix errors
-def solver(locations, matrix, vehicles, depot=0):
+def solver(data_instance):
     # Get the distance and times matrices using the driving-car profile
-    distance_matrix = matrix['distances']
+    instance = prepared_data(data_instance)
 
-    time_matrix = matrix['durations']
+    distance_matrix = instance['matrix']['distances']
 
-    cities = ["LOC" + str(i) if i != depot else "Depot" for i in range(len(matrix['distances'][0]))]
+    time_matrix = instance['matrix']['durations']
+
+    cities = ["LOC" + str(i) if i != instance['depot'] else "Depot" for i in range(len(distance_matrix[0]))]
 
     # TODO change to input Generate random time windows for each city
-    time_windows = random_time_windows(cities, depot)
+    time_windows = random_time_windows(cities, instance['depot'])
 
+    depot = instance['depot']
     # Create the data model
     data = {}
     data['distance_matrix'] = distance_matrix
     data['time_matrix'] = time_matrix
-    data['time_windows'] = time_windows
-    data['num_vehicles'] = len(vehicles)
-    data['depot'] = depot
+    data['time_windows'] = instance['time_windows']
+    data['num_vehicles'] = len(instance['vehicles'])
+    data['depot'] = instance['depot']
 
     # Create the routing index manager
     manager = pywrapcp.RoutingIndexManager(
@@ -134,7 +168,7 @@ def solver(locations, matrix, vehicles, depot=0):
 
     # return the result if found
     if solution:
-        return True, get_solution(data, manager, routing, solution, locations, vehicles)
+        return True, get_solution(data, manager, routing, solution, instance['locations'], instance['vehicles'])
     else:
         return False, {'Error': 'Solution not found'}
 
