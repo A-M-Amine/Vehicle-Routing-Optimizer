@@ -4,7 +4,7 @@ from .views import OptimizerViewSet, DeliveryViewSet
 
 router = routers.DefaultRouter()
 router.register('optimizer', OptimizerViewSet, basename='optimizer')
-router.register('delivery', DeliveryViewSet, basename='delivery')
+router.register('optimizer/delivery', DeliveryViewSet, basename='delivery')
 
 urlpatterns = [
     path('', include(router.urls))

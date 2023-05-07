@@ -5,7 +5,6 @@ from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import random
 from creds import ORS_KEY
-from api.optimizer.models import Optimizer
 import requests
 
 
@@ -21,36 +20,47 @@ def route_matrix_via_api(locations):
     metrics = ['distance', 'duration']
 
     # Get the distance matrix
-    output = client.distance_matrix(
-        locations=locations,
-        profile=profile,
-        metrics=metrics
-    )
+    try:
+        output = client.distance_matrix(
+            locations=locations,
+            profile=profile,
+            metrics=metrics
+        )
 
-    matrix = {
-        "locations": locations,
-        "distances": [],
-        "durations": []
-    }
+        result = {
+            "locations": locations,
+            "distances": output["distances"],
+            "durations": output["durations"]
+        }
 
-    matrix = matrix | output
+        for value in result.values():
+            if any(element is None for row in value for element in row):
+                return {'matrix': {}}
 
-    matrix_dict = {'matrix': matrix}
-    return matrix_dict
+        return {'matrix': result}
+
+        # Catch any exception from the API request
+
+    except (requests.exceptions.RequestException, ors.exceptions.ApiError) as e:
+        print(e)
+        return {'matrix': {}}
 
 
 def prepared_data(instance):
     serializer = OptimizerSerializer(instance=instance)
 
-    locations = []
+    locations = [serializer.data['depot']]
     demand = []
     time_windows = []
+
     for delivery in instance.deliveries.all():
         locations.append(delivery.coordinates)
         demand.append(delivery.package_size)
         time_windows.append(delivery.time_window)
 
     matrix = serializer.data['matrix']
+    print(locations)
+
     if matrix == {} or matrix['locations'] != locations:
         matrix = route_matrix_via_api(locations)
         optimizer_instance = serializer.update(instance=instance, validated_data=matrix)
@@ -69,28 +79,35 @@ def prepared_data(instance):
     return result
 
 
-# TODO add vehicle capacity, handle matrix errors
+# TODO add vehicle capacity
 def solver(data_instance):
-    # Get the distance and times matrices using the driving-car profile
+    # depot is set to zero by default
+    depot = 0
+
+    deliveries = data_instance.deliveries.all()
+    if len(deliveries) < 1:
+        return False, {'Error': 'No Assigned delivery locations'}
     instance = prepared_data(data_instance)
 
-    distance_matrix = instance['matrix']['distances']
+    if instance['matrix'] == {}:
+        return False, {'Error': 'Could not compute distance or time between Deliveries !'}
 
+    distance_matrix = instance['matrix']['distances']
     time_matrix = instance['matrix']['durations']
 
-    cities = ["LOC" + str(i) if i != instance['depot'] else "Depot" for i in range(len(distance_matrix[0]))]
+    cities = ["LOC" + str(i) if i != depot else "Depot" for i in range(len(distance_matrix[0]))]
 
-    # TODO change to input Generate random time windows for each city
-    time_windows = random_time_windows(cities, instance['depot'])
+    # ** can be toggled for random time windows
+    time_windows = random_time_windows(cities, depot)
 
-    depot = instance['depot']
     # Create the data model
     data = {}
     data['distance_matrix'] = distance_matrix
     data['time_matrix'] = time_matrix
-    data['time_windows'] = instance['time_windows']
+    # data['time_windows'] = instance['time_windows']
+    data['time_windows'] = time_windows
     data['num_vehicles'] = len(instance['vehicles'])
-    data['depot'] = instance['depot']
+    data['depot'] = depot
 
     # Create the routing index manager
     manager = pywrapcp.RoutingIndexManager(

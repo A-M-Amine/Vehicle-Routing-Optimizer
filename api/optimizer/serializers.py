@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import Optimizer, Delivery, default_time_window_dict
 from api.optimized_route.models import OptimizedRoute
 from api.vehicle.models import Vehicle
-from .validators import validate_depot_value
+from .validators import validate_coords
 from rest_framework.validators import UniqueValidator
 
 
@@ -18,13 +18,9 @@ class DeliverySerializer(serializers.ModelSerializer):
 
     def validate_coordinates(self, value):
 
-        if not isinstance(value, list) or len(value) != 2:
-            raise serializers.ValidationError('coordinates must be a valid array that contain longitude & latitude '
-                                              'only!')
-
-        for item in value:
-            if not isinstance(item, numbers.Real):
-                raise serializers.ValidationError(f'{item} is not a valid type for coordinates')
+        check, msg = validate_coords(value)
+        if not check:
+            raise serializers.ValidationError(msg)
 
         return value
 
@@ -50,6 +46,7 @@ class DeliverySerializer(serializers.ModelSerializer):
 class OptimizerSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True,
                                  validators=[UniqueValidator(queryset=Optimizer.objects.all())])
+    depot = serializers.JSONField(required=True)
     vehicles = serializers.PrimaryKeyRelatedField(many=True, queryset=Vehicle.objects.all())
     solved = serializers.BooleanField(default=False)
 
@@ -82,12 +79,21 @@ class OptimizerSerializer(serializers.ModelSerializer):
         instance_data = self.to_representation(self.instance)
         # Get the validated data
         validated_data = self.validated_data
+        print(instance_data.keys(), validated_data.keys())
         # Compare the two data and return True if they are different
         for key in instance_data.keys() & validated_data.keys():
             if instance_data[key] != validated_data[key]:
                 return True
 
         return False
+
+    def validate_depot(self, value):
+
+        check, msg = validate_coords(value)
+        if not check:
+            raise serializers.ValidationError(msg)
+
+        return value
 
     def validate_vehicles(self, value):
 

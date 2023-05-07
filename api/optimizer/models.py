@@ -12,7 +12,7 @@ def default_time_window_dict():
 class Optimizer(models.Model):
     name = models.CharField(max_length=150, unique=True, blank=True, null=True)
     solved = models.BooleanField(default=False)
-    depot = models.IntegerField(default=0)
+    depot = models.JSONField()
     vehicles = models.ManyToManyField(Vehicle)
     matrix = models.JSONField(default=dict, blank=True)
 

@@ -59,13 +59,13 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
         check, result = solver(optimizer_instance)
         if not check:
-            return Response(result)
+            msg = result
+            result = {
+                "vehicle_routes": []
+            }
 
         # get the optimized route linked to the optimizer and update it with the data
         try:
-            solved = {'solved': True}
-            optimizer_serializer.update(instance=optimizer_instance, validated_data=solved)
-            optimizer_instance.save()
             opt_route_instance = OptimizedRoute.objects.get(optimizer=optimizer_instance)
             optimized_route_serializer = OptimizedRouteSerializer(data=result)
             if optimized_route_serializer.is_valid():
@@ -75,5 +75,12 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
         except OptimizedRoute.DoesNotExist:
             return Response({"error": "optimized route linked to this optimizer should be created first"})
+
+        if not check:
+            return Response(msg)
+
+        solved = {'solved': True}
+        optimizer_serializer.update(instance=optimizer_instance, validated_data=solved)
+        optimizer_instance.save()
 
         return Response({"Success": "Solution Found"})

@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from rest_framework.response import Response
 import json
+import numbers
 
 
 def validate_locations_value(params):
@@ -33,3 +34,13 @@ def validate_depot_value(locations, depot):
 
     return True, ""
 
+
+def validate_coords(value):
+    if not isinstance(value, list) or len(value) != 2:
+        return False, 'coordinates must be a valid array that contain longitude & latitude only!'
+
+    for item in value:
+        if not isinstance(item, numbers.Real):
+            return False, f'{item} is not a valid type for coordinates'
+
+    return True, ''
