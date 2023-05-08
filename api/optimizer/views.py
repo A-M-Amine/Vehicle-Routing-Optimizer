@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -31,6 +32,30 @@ class DeliveryViewSet(viewsets.ModelViewSet):
         # Serialize the created objects and return them in the response
         response_serializer = self.get_serializer(created_deliveries, many=True)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    def list(self, request, optimizer_pk):
+        # get the optimizer object from the optimizer_pk parameter
+        optimizer = get_object_or_404(Optimizer, pk=optimizer_pk)
+        # get the deliveries that belong to the optimizer
+        deliveries = Delivery.objects.filter(optimizer=optimizer)
+        # serialize the deliveries
+        serializer = DeliverySerializer(deliveries, many=True)
+        # return a response with the serialized data
+        return Response(serializer.data)
+
+    def retrieve(self, request, optimizer_pk, pk):
+        # get the optimizer object from the optimizer_pk parameter
+        optimizer = get_object_or_404(Optimizer, pk=optimizer_pk)
+        # get the delivery object from the pk parameter
+        delivery = get_object_or_404(Delivery, pk=pk)
+        # check if the delivery belongs to the optimizer
+        if delivery.optimizer != optimizer:
+            # return a 404 response if not
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        # serialize the delivery
+        serializer = DeliverySerializer(delivery)
+        # return a response with the serialized data
+        return Response(serializer.data)
 
 
 class OptimizerViewSet(viewsets.ModelViewSet):
