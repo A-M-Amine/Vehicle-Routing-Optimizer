@@ -71,13 +71,14 @@ class OptimizerViewSet(viewsets.ModelViewSet):
             if optimized_route_serializer.is_valid():
                 optimized_route_serializer.update(instance=opt_route_instance, validated_data=result)
             else:
-                return Response({"error": "check data"})
+                return Response({"error": "check data"}, status=status.HTTP_400_BAD_REQUEST)
 
         except OptimizedRoute.DoesNotExist:
-            return Response({"error": "optimized route linked to this optimizer should be created first"})
+            return Response({"error": "optimized route linked to this optimizer should be created first"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         if not check:
-            return Response(msg)
+            return Response(msg, status=status.HTTP_400_BAD_REQUEST)
 
         solved = {'solved': True}
         optimizer_serializer.update(instance=optimizer_instance, validated_data=solved)
