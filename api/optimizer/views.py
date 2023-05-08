@@ -9,8 +9,7 @@ from api.optimized_route.models import OptimizedRoute
 from api.optimized_route.serializers import OptimizedRouteSerializer
 
 
-# TODO fix HTTP ERROR Responses Type
-
+# TODO add update in bulk
 class DeliveryViewSet(viewsets.ModelViewSet):
     queryset = Delivery.objects.all()
     serializer_class = DeliverySerializer
@@ -32,6 +31,27 @@ class DeliveryViewSet(viewsets.ModelViewSet):
         # Serialize the created objects and return them in the response
         response_serializer = self.get_serializer(created_deliveries, many=True)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, optimizer_pk, *args, **kwargs):
+        # Deserialize the incoming data into a list of dictionaries
+        data = request.data
+        if not isinstance(data, list):
+            return Response({'error': 'Expected a list of items'}, status=status.HTTP_400_BAD_REQUEST)
+        # Get the optimizer object from the optimizer_pk parameter
+        optimizer = get_object_or_404(Optimizer, pk=optimizer_pk)
+        # Iterate through the list of dictionaries and update a Delivery object for each dictionary
+        updated_deliveries = []
+        for delivery_data in data:
+            # Get the Delivery object by its id and optimizer or raise an exception if not found
+            delivery = get_object_or_404(Delivery, id=delivery_data.get('id'), optimizer=optimizer)
+            # Use the partial argument to allow partial updates
+            serializer = self.get_serializer(delivery, data=delivery_data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            updated_deliveries.append(serializer.instance)
+        # Serialize the updated objects and return them in the response
+        response_serializer = self.get_serializer(updated_deliveries, many=True)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     def list(self, request, optimizer_pk):
         # get the optimizer object from the optimizer_pk parameter

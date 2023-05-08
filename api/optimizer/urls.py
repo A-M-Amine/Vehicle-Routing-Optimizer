@@ -8,7 +8,7 @@ router.register('delivery', DeliveryViewSet, basename='delivery')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('optimizer/<int:optimizer_pk>/delivery/', DeliveryViewSet.as_view({'get': 'list'}),
+    path('optimizer/<int:optimizer_pk>/delivery/', DeliveryViewSet.as_view({'get': 'list', 'put': 'update'}),
          name='optimizer-delivery-list'),
     path('optimizer/<int:optimizer_pk>/delivery/<int:pk>/', DeliveryViewSet.as_view({'get': 'retrieve'}),
          name='optimizer-delivery-detail'),
