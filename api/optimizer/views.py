@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Optimizer, Delivery
 from .serializers import OptimizerSerializer, DeliverySerializer
-from .solver import solver, route_matrix_via_api, tester
+from .solver import solver, route_matrix_via_api
 from api.optimized_route.models import OptimizedRoute
 from api.optimized_route.serializers import OptimizedRouteSerializer
 

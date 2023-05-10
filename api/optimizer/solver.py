@@ -7,19 +7,21 @@ import random
 from creds import ORS_KEY
 import requests
 
+LOCAL_SEARCH_ALGORITHMS = {"GLS": routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH,
+                           "TS": routing_enums_pb2.LocalSearchMetaheuristic.TABU_SEARCH,
+                           "SA": routing_enums_pb2.LocalSearchMetaheuristic.SIMULATED_ANNEALING}
+
 
 # TODO check the time format and use minutes for durations
 def route_matrix_via_api(locations):
     api_key = ORS_KEY
 
-    # Define the client
     client = ors.Client(key=api_key)
 
     # Specify the travel mode and the returned metrics
     profile = 'driving-car'
     metrics = ['distance', 'duration']
 
-    # Get the distance matrix
     try:
         output = client.distance_matrix(
             locations=locations,
@@ -29,8 +31,8 @@ def route_matrix_via_api(locations):
 
         result = {
             "locations": locations,
-            "distances": output["distances"],
-            "durations": output["durations"]
+            "distances": output["distances"],  # distances in meters
+            "durations": output["durations"]  # duration in seconds
         }
 
         for value in result.values():
@@ -39,27 +41,30 @@ def route_matrix_via_api(locations):
 
         return {'matrix': result}
 
-        # Catch any exception from the API request
-
+    # Catch any exception from the API request
     except (requests.exceptions.RequestException, ors.exceptions.ApiError) as e:
         print(e)
         return {'matrix': {}}
 
 
+# TODO make capacity flag respond to given data
 def prepared_data(instance):
     serializer = OptimizerSerializer(instance=instance)
 
     locations = [serializer.data['depot']]
-    demand = []
-    time_windows = []
+    demand = [0]
+    time_windows = [[0, 1440]]
 
     for delivery in instance.deliveries.all():
         locations.append(delivery.coordinates)
         demand.append(delivery.package_size)
         time_windows.append(delivery.time_window)
 
+    capacity = []
+    for vehicle in instance.vehicles.all():
+        capacity.append(vehicle.capacity)
+
     matrix = serializer.data['matrix']
-    print(locations)
 
     if matrix == {} or matrix['locations'] != locations:
         matrix = route_matrix_via_api(locations)
@@ -70,16 +75,17 @@ def prepared_data(instance):
     result = {
         "depot": serializer.data['depot'],
         "vehicles": serializer.data['vehicles'],
+        "capacity": capacity,
         "locations": locations,
         "demand": demand,
         "time_windows": time_windows,
-        "matrix": matrix
+        "matrix": matrix,
+        "Capacity_Constraint": True
     }
 
     return result
 
 
-# TODO add vehicle capacity
 def solver(data_instance):
     # depot is set to zero by default
     depot = 0
@@ -97,17 +103,18 @@ def solver(data_instance):
 
     cities = ["LOC" + str(i) if i != depot else "Depot" for i in range(len(distance_matrix[0]))]
 
-    # ** can be toggled for random time windows
-    time_windows = random_time_windows(cities, depot)
-
     # Create the data model
     data = {}
     data['distance_matrix'] = distance_matrix
     data['time_matrix'] = time_matrix
-    # data['time_windows'] = instance['time_windows']
-    data['time_windows'] = time_windows
+    data['time_windows'] = instance['time_windows']
     data['num_vehicles'] = len(instance['vehicles'])
     data['depot'] = depot
+    capacity_constraint = instance['Capacity_Constraint']
+    # Add the capacity and demand arrays to the data model if Capacity_Demand is True
+    if capacity_constraint:
+        data['capacity'] = instance['capacity']
+        data['demand'] = instance['demand']
 
     # Create the routing index manager
     manager = pywrapcp.RoutingIndexManager(
@@ -151,7 +158,6 @@ def solver(data_instance):
     # Get the time dimension object
     time_dimension = routing.GetDimensionOrDie('Time')
 
-    # Add time window constraints for each location except depot
     for location_idx, time_window in enumerate(data['time_windows']):
         if location_idx == depot:
             continue  # skip depot
@@ -171,11 +177,29 @@ def solver(data_instance):
         routing.AddVariableMinimizedByFinalizer(
             time_dimension.CumulVar(routing.End(i)))
 
+    # Define a callback for the demand array if capacity_constraint is True
+    if capacity_constraint:
+        def demand_callback(from_index):
+            # Returns the demand of the node
+            from_node = manager.IndexToNode(from_index)
+            return data['demand'][from_node]
+
+        # Register the demand callback with the routing model
+        demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
+
+        # Add a dimension for capacity and set its upper bound to the maximum capacity of each vehicle
+        routing.AddDimensionWithVehicleCapacity(
+            demand_callback_index,
+            0,  # null capacity slack
+            data['capacity'],  # vehicle maximum capacities
+            True,  # start cumul to zero
+            'Capacity'
+        )
+
     # Set the local search metaheuristic to guided local search
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.local_search_metaheuristic = (
-        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-    )
+        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
 
     # Set the time limit for the search
     search_parameters.time_limit.seconds = 30
@@ -265,9 +289,3 @@ def random_time_windows(cities, depot):
             time_windows.append((start, end))
 
     return time_windows
-
-
-def tester(id, name, locations, depot, vehicles, matrix):
-    check, res = solver(locations, matrix, len(vehicles), depot)
-
-    return False, "nain"
