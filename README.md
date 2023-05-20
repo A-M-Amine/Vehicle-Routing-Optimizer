@@ -44,5 +44,5 @@ The API has 3 main endpoints:
   }
   ```
 
-- `/optimizedroute/`: (description we'll be added soon)
-- `/vehicles/`:  (description we'll be added soon)
+- `/optimizedroute/`: (description will be added soon)
+- `/vehicles/`:  (description will be added soon)
