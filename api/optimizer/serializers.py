@@ -79,7 +79,7 @@ class OptimizerSerializer(serializers.ModelSerializer):
         instance_data = self.to_representation(self.instance)
         # Get the validated data
         validated_data = self.validated_data
-        print(instance_data.keys(), validated_data.keys())
+        
         # Compare the two data and return True if they are different
         for key in instance_data.keys() & validated_data.keys():
             if instance_data[key] != validated_data[key]:

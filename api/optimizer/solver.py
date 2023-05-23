@@ -29,6 +29,10 @@ def route_matrix_via_api(locations):
             metrics=metrics
         )
 
+        # convert values into integers required by OR-Tools to work
+        output["distances"] = [list(map(int, row)) for row in output["distances"]]
+        output["durations"] = [list(map(int, row)) for row in output["durations"]]
+
         result = {
             "locations": locations,
             "distances": output["distances"],  # distances in meters

@@ -17,7 +17,7 @@ class Optimizer(models.Model):
     matrix = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
-        return f"{self.name}, depot index : {self.depot}"
+        return f"{str(self.id)}  {self.name}, depot index : {self.depot}"
 
 
 class Delivery(models.Model):
