@@ -12,9 +12,10 @@ class OptimizedRouteSerializer(serializers.ModelSerializer):
         model = OptimizedRoute
         fields = '__all__'
 
-    # def to_representation(self, instance):
-    #     data = super().to_representation(instance)
-    #
-    #     data['vehicle_routes'] = "GEO path"
-    #
-    #     return data
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        if data['vehicle_routes'] == {}:
+            data['vehicle_routes'] = []
+        
+        return data
