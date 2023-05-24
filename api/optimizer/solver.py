@@ -90,7 +90,7 @@ def prepared_data(instance):
     return result
 
 
-def solver(data_instance):
+def solver(data_instance, solving_method):
     # depot is set to zero by default
     depot = 0
 
@@ -104,8 +104,6 @@ def solver(data_instance):
 
     distance_matrix = instance['matrix']['distances']
     time_matrix = instance['matrix']['durations']
-
-    cities = ["LOC" + str(i) if i != depot else "Depot" for i in range(len(distance_matrix[0]))]
 
     # Create the data model
     data = {}
@@ -202,8 +200,15 @@ def solver(data_instance):
 
     # Set the local search metaheuristic to guided local search
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-    search_parameters.local_search_metaheuristic = (
-        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
+    search_parameters.first_solution_strategy = (
+        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
+
+    method = LOCAL_SEARCH_ALGORITHMS.get(solving_method, None)
+    if method:
+        search_parameters.local_search_metaheuristic = method
+    else:
+        search_parameters.local_search_metaheuristic = (
+            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
 
     # Set the time limit for the search
     search_parameters.time_limit.seconds = 30
@@ -213,43 +218,61 @@ def solver(data_instance):
 
     # return the result if found
     if solution:
-        return True, get_solution(data, manager, routing, solution, instance['locations'], instance['vehicles'])
+
+        return True, get_solution(data, manager, routing, solution, instance['locations'], instance['vehicles'],
+                                  method)
     else:
         return False, {'Error': 'Solution not found'}
 
 
-# def get_solution(data, manager, routing, solution, locations, vehicles):
-#     locations = locations
-#     result = {}
-#     time_dimension = routing.GetDimensionOrDie('Time')
-#     total_time = 0
-#     routes = []
-#     for vehicle_id in range(data['num_vehicles']):
-#         index = routing.Start(vehicle_id)
-#         route = []
-#         route_index = []
-#         while not routing.IsEnd(index):
-#             time_var = time_dimension.CumulVar(index)
-#             node_index = manager.IndexToNode(index)
-#             route.append(locations[node_index])
-#             index = solution.Value(routing.NextVar(index))
-#
-#         time_var = time_dimension.CumulVar(index)
-#         node_index = manager.IndexToNode(index)
-#         route.append(locations[node_index])
-#         route_time = solution.Min(time_var)
-#
-#         route_index = route[::]
-#         route = create_geojson(route)
-#
-#         routes.append({'vehicle_id': vehicles[vehicle_id],
-#                        'path_index': route_index,
-#                        'route_time': route_time,
-#                        'path': "route"})
-#         total_time += route_time
-#     result['vehicle_routes'] = routes
-#     return result
-#
+def get_solution(data, manager, routing, solution, locations, vehicles, method):
+    locations = locations
+    result = {}
+    time_dimension = routing.GetDimensionOrDie('Time')
+    total_time = 0
+    total_distance = 0
+    routes = []
+    for vehicle_id in range(data['num_vehicles']):
+        index = routing.Start(vehicle_id)
+        route = []
+        route_index = []
+        route_distance = 0
+        while not routing.IsEnd(index):
+            time_var = time_dimension.CumulVar(index)
+            node_index = manager.IndexToNode(index)
+            route.append(locations[node_index])
+            previous_index = index
+            index = solution.Value(routing.NextVar(index))
+            route_distance += routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
+
+        time_var = time_dimension.CumulVar(index)
+        node_index = manager.IndexToNode(index)
+        route.append(locations[node_index])
+        route_time = solution.Min(time_var)
+
+        route_index = route[::]
+        route = create_geojson(route)
+
+        routes.append({'vehicle_id': vehicles[vehicle_id],
+                       'path_index': route_index,
+                       'route_time': route_time,
+                       'route_distance': route_distance,
+                       'path': route})
+        total_time += route_time
+        total_distance += route_distance
+    result['vehicle_routes'] = routes
+    result['total_time'] = total_time
+    result['total_distance'] = total_distance
+
+    if method:
+        for key, value in LOCAL_SEARCH_ALGORITHMS.items():
+            if method == value:
+                result['local_search_algorithm'] = key
+    else:
+        result['local_search_algorithm'] = 'GLS'
+
+    return result
+
 
 def create_geojson(locations):
     # Define the API endpoint and the profile
@@ -293,44 +316,3 @@ def random_time_windows(cities, depot):
             time_windows.append((start, end))
 
     return time_windows
-
-
-def get_solution(data, manager, routing, solution, locations, vehicles):
-    locations = locations
-    result = {}
-    time_dimension = routing.GetDimensionOrDie('Time')
-    total_time = 0
-    total_distance = 0
-    routes = []
-    for vehicle_id in range(data['num_vehicles']):
-        index = routing.Start(vehicle_id)
-        route = []
-        route_index = []
-        route_distance = 0
-        while not routing.IsEnd(index):
-            time_var = time_dimension.CumulVar(index)
-            node_index = manager.IndexToNode(index)
-            route.append(locations[node_index])
-            previous_index = index
-            index = solution.Value(routing.NextVar(index))
-            route_distance += routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
-
-        time_var = time_dimension.CumulVar(index)
-        node_index = manager.IndexToNode(index)
-        route.append(locations[node_index])
-        route_time = solution.Min(time_var)
-
-        route_index = route[::]
-        route = create_geojson(route)
-
-        routes.append({'vehicle_id': vehicles[vehicle_id],
-                       'path_index': route_index,
-                       'route_time': route_time,
-                       'route_distance': route_distance,
-                       'path': route})
-        total_time += route_time
-        total_distance += route_distance
-    result['vehicle_routes'] = routes
-    result['total_time'] = total_time
-    result['total_distance'] = total_distance
-    return result

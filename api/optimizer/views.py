@@ -98,11 +98,15 @@ class OptimizerViewSet(viewsets.ModelViewSet):
 
         optimizer_serializer = OptimizerSerializer(optimizer_instance)
 
+        solving_method = request.query_params.get('solving_method')
+
+        optimized_route = OptimizedRoute.objects.get(optimizer=optimizer_instance)
+
         solved = optimizer_serializer.data['solved']
-        if solved:
+        if optimized_route.local_search_algorithm == solving_method and solved:
             return Response({"Success": "solution already exists"})
 
-        check, result = solver(optimizer_instance)
+        check, result = solver(optimizer_instance, solving_method)
         if not check:
             msg = result
             result = {
