@@ -1,5 +1,13 @@
 # Vehicle Routing Optimizer API
 
+This project is a prototype developed as part of my Master's Thesis on the Capacitated Vehicle Routing Problem With Time Windows. The core functionality is implemented in the [solver.py](https://github.com/A-M-Amine/Vehicle-Routing-Optimizer/blob/main/api/optimizer/solver.py) script, which provides insight into the algorithmic approach used.
+
+## Current State Update (26/06/2024):
+
+Please note that the API itself was my first attempt at using the Django and Django Rest framework. Consequently, I cannot guarantee its stability or execution reliability at this stage. While I intend to revisit this project when time permits, I am unable to commit to a specific timeline.
+
+## Overview
+
 This is a RESTful web API that uses Google OR-Tools and Open Route Service API to solve the Vehicle Routing Problem (
 VRP) with time windows and capacity constraints. The project allows users to input a list of locations, a set of
 vehicles with capcacities, and other parameters, and outputs the optimal routes for each vehicle to visit all locations
